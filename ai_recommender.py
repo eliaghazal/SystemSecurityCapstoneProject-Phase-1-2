@@ -107,7 +107,9 @@ class AIRecommender:
             # Check for punctuation
             clean_w = w.strip(string.punctuation).lower()
             
-            if clean_w in loader.spell_errors:
+            # Only correct if the word is NOT in our dictionary
+            # AND it is in the spell_errors list
+            if clean_w not in loader.unigrams and clean_w in loader.spell_errors:
                 correct = loader.spell_errors[clean_w]
                 # Preserve case/punctuation if possible (simple version)
                 corrected_words.append(correct)
