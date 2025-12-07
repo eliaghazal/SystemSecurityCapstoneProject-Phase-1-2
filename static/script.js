@@ -38,8 +38,18 @@ async function caesarAttack() {
     let html = "<h3>Top Recommendations:</h3>";
     res.results.forEach(r => {
         html += `<div class="result-item">
-            <span class="result-score">${(r.score * 100).toFixed(1)}% Match</span> | Key: ${r.key}<br>
-            ${r.plaintext}
+            <div class="result-header">
+                <span class="result-score">${(r.score * 100).toFixed(1)}% Match</span> | Key: ${r.key}
+            </div>
+            <div class="result-text">${r.plaintext}</div>
+            <div class="result-details">
+                <p><strong>Analysis:</strong></p>
+                <ul>
+                    <li>Dictionary Score: ${(r.details.dict_score * 100).toFixed(1)}% (Matched: ${r.details.matched_words.join(', ')})</li>
+                    <li>N-Gram Score: ${(r.details.ngram_score * 100).toFixed(1)}% (Top: ${r.details.top_ngrams.join(', ')})</li>
+                    <li>Segmented: ${r.details.segmented ? 'Yes' : 'No'}</li>
+                </ul>
+            </div>
         </div>`;
     });
     document.getElementById('caesar-output').innerHTML = html;
@@ -68,8 +78,18 @@ async function transAttack() {
     let html = "<h3>Top Recommendations:</h3>";
     res.results.forEach(r => {
         html += `<div class="result-item">
-            <span class="result-score">${(r.score * 100).toFixed(1)}% Match</span> | Key: ${r.key}<br>
-            ${r.plaintext}
+            <div class="result-header">
+                <span class="result-score">${(r.score * 100).toFixed(1)}% Match</span> | Key: ${r.key}
+            </div>
+            <div class="result-text">${r.plaintext}</div>
+            <div class="result-details">
+                <p><strong>Analysis:</strong></p>
+                <ul>
+                    <li>Dictionary Score: ${(r.details.dict_score * 100).toFixed(1)}% (Matched: ${r.details.matched_words.join(', ')})</li>
+                    <li>N-Gram Score: ${(r.details.ngram_score * 100).toFixed(1)}% (Top: ${r.details.top_ngrams.join(', ')})</li>
+                    <li>Segmented: ${r.details.segmented ? 'Yes' : 'No'}</li>
+                </ul>
+            </div>
         </div>`;
     });
     document.getElementById('trans-output').innerHTML = html;
@@ -128,6 +148,16 @@ async function rsaAttack() {
             <h3 style="color: var(--success)">Success!</h3>
             <p><strong>Recovered Private Key:</strong> (${res.private_key[0]}, ${res.private_key[1]})</p>
             <p><strong>Decrypted Message:</strong> ${res.decrypted}</p>
+            <div class="result-details">
+                <p><strong>Factorization Details:</strong></p>
+                <ul>
+                    <li>n = ${n}</li>
+                    <li>p = ${res.details.p}</li>
+                    <li>q = ${res.details.q}</li>
+                    <li>phi(n) = ${res.details.phi}</li>
+                    <li>d = ${res.details.d} (Calculated via Modular Inverse)</li>
+                </ul>
+            </div>
         `;
     }
 }

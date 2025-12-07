@@ -127,15 +127,19 @@ def rsa_attack():
         cipher_ints = list(map(int, text.strip().split()))
         
         # 1. Recover Private Key
-        recovered_key = rsa_cracker.attack((e, n))
+        attack_result = rsa_cracker.attack((e, n))
         
-        if recovered_key:
+        if attack_result:
+            recovered_key = attack_result['private_key']
+            details = attack_result['details']
+            
             # 2. Decrypt
             decrypted = rsa.decrypt(cipher_ints, recovered_key)
             return jsonify({
                 'success': True,
                 'private_key': recovered_key,
-                'decrypted': decrypted
+                'decrypted': decrypted,
+                'details': details
             })
         else:
             return jsonify({'success': False, 'message': 'Failed to factorize n'}), 400

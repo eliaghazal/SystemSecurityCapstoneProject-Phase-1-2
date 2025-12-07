@@ -52,7 +52,7 @@ class RSACipher:
             x += m0
         return x
 
-    def generate_keys(self, min_val=100, max_val=300):
+    def generate_keys(self, min_val=300, max_val=1000):
         """
         Generates RSA public and private keys.
         Returns: ((e, n), (d, n))
@@ -134,4 +134,13 @@ class RSAAttacker:
         d = self.rsa.mod_inverse(e, phi)
         
         print(f"[RSA Attack] Calculated private key: d={d}")
-        return (d, n)
+        
+        return {
+            "private_key": (d, n),
+            "details": {
+                "p": p,
+                "q": q,
+                "phi": phi,
+                "d": d
+            }
+        }
