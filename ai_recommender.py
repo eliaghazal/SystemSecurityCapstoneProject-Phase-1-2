@@ -119,26 +119,83 @@ class AIRecommender:
                 
         return ' '.join(corrected_words), corrections_made
 
+    def _segment_text(self, text):
+        """
+        Segments text into words using Viterbi algorithm.
+        Returns: (segmented_text, score)
+        """
+        n = len(text)
+        # dp[i] = max log prob of text[0:i]
+        dp = [-float('inf')] * (n + 1)
+        dp[0] = 0
+        # path[i] = index of previous word boundary
+        path = [-1] * (n + 1)
+        
+        for i in range(1, n + 1):
+            # Try all possible previous word boundaries j
+            # Limit word length to 20 for performance
+            for j in range(max(0, i - 20), i):
+                word = text[j:i]
+                
+                # Check if word exists in unigrams
+                if word in loader.unigrams:
+                    # Calculate score: dp[j] + log(P(word))
+                    # We can use unigram probability here.
+                    # Context (bigrams) is harder in simple Viterbi, but possible.
+                    # For segmentation, unigram + length bonus is usually enough.
+                    
+                    count = loader.unigrams[word]
+                    prob = count / loader.total_unigrams
+                    log_prob = math.log10(prob)
+                    
+                    current_score = dp[j] + log_prob
+                    
+                    if current_score > dp[i]:
+                        dp[i] = current_score
+                        path[i] = j
+                        
+        # Reconstruct path
+        if dp[n] == -float('inf'):
+            return None, -float('inf')
+            
+        segments = []
+        curr = n
+        while curr > 0:
+            prev = path[curr]
+            segments.append(text[prev:curr])
+            curr = prev
+            
+        return ' '.join(reversed(segments)), dp[n]
+
     def analyze(self, text):
         # Step A: Segmentation (Check for spaces)
+        segmented_text = text
+        was_segmented = False
+        
         if " " not in text and len(text) > 10:
-            # Step C: Ciphertext Fallback
-            score = self._get_char_trigram_score(text)
-            return {
-                "score": score,
-                "log_prob": 0,
-                "details": ["Fallback to Character Trigrams"],
-                "segmented": False,
-                "auto_correct": []
-            }
+            # Try to segment
+            seg, score = self._segment_text(text)
+            if seg:
+                segmented_text = seg
+                was_segmented = True
+            else:
+                # Step C: Ciphertext Fallback
+                score = self._get_char_trigram_score(text)
+                return {
+                    "score": score,
+                    "log_prob": 0,
+                    "details": ["Fallback to Character Trigrams"],
+                    "segmented": False,
+                    "auto_correct": []
+                }
         
         # Step B: Scoring
-        result = self.get_text_score(text)
+        result = self.get_text_score(segmented_text)
         
         return {
             "score": result['score'],
             "log_prob": result['log_prob'],
             "details": result['details'],
-            "segmented": True,
+            "segmented": was_segmented,
             "auto_correct": [] # Will be populated by attacker if needed
         }
