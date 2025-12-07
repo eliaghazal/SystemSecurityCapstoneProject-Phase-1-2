@@ -101,7 +101,7 @@ class TranspositionAttacker:
     def __init__(self):
         self.cipher = TranspositionCipher()
         self.ai = AIRecommender()
-        self.MAX_KEY_LEN_BRUTE = 7 # 7! = 5040 checks
+        self.MAX_KEY_LEN_BRUTE = 9 # 9! = 362,880 checks
 
     def attack(self, ciphertext):
         """
