@@ -77,7 +77,10 @@ def rsa_generate():
     pub, priv = rsa.generate_keys()
     rsa_keys['public'] = pub
     rsa_keys['private'] = priv
-    return jsonify({'public': pub, 'private': priv})
+    # Convert to strings for JSON transport (prevent JS precision loss)
+    pub_str = (str(pub[0]), str(pub[1]))
+    priv_str = (str(priv[0]), str(priv[1]))
+    return jsonify({'public': pub_str, 'private': priv_str})
 
 @app.route('/api/rsa/encrypt', methods=['POST'])
 def rsa_encrypt():
