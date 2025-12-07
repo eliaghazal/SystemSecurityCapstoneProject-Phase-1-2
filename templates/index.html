@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto System | Phase 3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Crypto<span class="highlight">System</span></h1>
+            <p>Advanced Encryption & Analysis Tool</p>
+        </header>
+
+        <nav>
+            <button class="nav-btn active" onclick="showTab('caesar')">Caesar</button>
+            <button class="nav-btn" onclick="showTab('transposition')">Transposition</button>
+            <button class="nav-btn" onclick="showTab('rsa')">RSA</button>
+        </nav>
+
+        <main>
+            <!-- CAESAR SECTION -->
+            <section id="caesar" class="tab-content active">
+                <div class="card">
+                    <h2>Caesar Cipher</h2>
+                    <div class="input-group">
+                        <label>Message</label>
+                        <textarea id="caesar-input" placeholder="Enter text here..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Shift (Key)</label>
+                        <input type="number" id="caesar-shift" value="3" min="0" max="25">
+                    </div>
+                    <div class="actions">
+                        <button onclick="caesarEncrypt()">Encrypt</button>
+                        <button onclick="caesarDecrypt()">Decrypt</button>
+                        <button class="danger" onclick="caesarAttack()">Brute Force Attack</button>
+                    </div>
+                    <div class="output-area" id="caesar-output"></div>
+                </div>
+            </section>
+
+            <!-- TRANSPOSITION SECTION -->
+            <section id="transposition" class="tab-content">
+                <div class="card">
+                    <h2>Transposition Cipher</h2>
+                    <div class="input-group">
+                        <label>Message</label>
+                        <textarea id="trans-input" placeholder="Enter text here..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Keyword</label>
+                        <input type="text" id="trans-key" placeholder="e.g. ZEBRA">
+                    </div>
+                    <div class="actions">
+                        <button onclick="transEncrypt()">Encrypt</button>
+                        <button onclick="transDecrypt()">Decrypt</button>
+                        <button class="danger" onclick="transAttack()">Brute Force Attack</button>
+                    </div>
+                    <div class="output-area" id="trans-output"></div>
+                </div>
+            </section>
+
+            <!-- RSA SECTION -->
+            <section id="rsa" class="tab-content">
+                <div class="card">
+                    <h2>RSA Encryption</h2>
+                    
+                    <div class="key-management">
+                        <button onclick="rsaGenerate()">Generate New Keys</button>
+                        <div class="keys-display" id="rsa-keys-display">
+                            <p><strong>Public Key (e, n):</strong> <span id="pub-key">-</span></p>
+                            <p><strong>Private Key (d, n):</strong> <span id="priv-key">-</span></p>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Message / Ciphertext (Space separated ints)</label>
+                        <textarea id="rsa-input" placeholder="Enter text or numbers..."></textarea>
+                    </div>
+
+                    <div class="advanced-inputs">
+                        <input type="text" id="rsa-e" placeholder="e (Public Exp)">
+                        <input type="text" id="rsa-d" placeholder="d (Private Exp)">
+                        <input type="text" id="rsa-n" placeholder="n (Modulus)">
+                    </div>
+
+                    <div class="actions">
+                        <button onclick="rsaEncrypt()">Encrypt</button>
+                        <button onclick="rsaDecrypt()">Decrypt</button>
+                        <button class="danger" onclick="rsaAttack()">Attack (Factorize n)</button>
+                    </div>
+                    <div class="output-area" id="rsa-output"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
