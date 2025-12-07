@@ -73,10 +73,19 @@ def trans_attack():
 
 # --- RSA ROUTES ---
 @app.route('/api/rsa/generate', methods=['POST'])
+@app.route('/api/rsa/generate', methods=['POST'])
 def rsa_generate():
-    pub, priv = rsa.generate_keys()
+    data = request.json
+    strength = data.get('strength', 'strong')
+    
+    keysize = 1024
+    if strength == 'weak':
+        keysize = 32 # Small enough to brute force quickly
+        
+    pub, priv = rsa.generate_keys(keysize=keysize)
     rsa_keys['public'] = pub
     rsa_keys['private'] = priv
+    
     # Convert to strings for JSON transport (prevent JS precision loss)
     pub_str = (str(pub[0]), str(pub[1]))
     priv_str = (str(priv[0]), str(priv[1]))

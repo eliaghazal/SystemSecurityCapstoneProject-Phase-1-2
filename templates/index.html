@@ -74,6 +74,11 @@
                     <h2>RSA Encryption</h2>
 
                     <div class="key-management">
+                        <div class="checkbox-wrapper" style="margin-bottom: 1rem;">
+                            <input type="checkbox" id="rsa-weak-mode">
+                            <label for="rsa-weak-mode" style="display:inline; color: var(--accent);">Demo Mode (Weak
+                                Keys for Attacking)</label>
+                        </div>
                         <button onclick="rsaGenerate()">Generate New Keys</button>
                         <div class="keys-display" id="rsa-keys-display">
                             <p><strong>Public Key (e, n):</strong> <span id="pub-key">-</span></p>

@@ -167,7 +167,10 @@ async function transAttack() {
 
 // --- RSA ---
 async function rsaGenerate() {
-    const res = await postData('/api/rsa/generate', {});
+    const isWeak = document.getElementById('rsa-weak-mode').checked;
+    const strength = isWeak ? 'weak' : 'strong';
+
+    const res = await postData('/api/rsa/generate', { strength });
     document.getElementById('pub-key').innerText = `(${res.public[0]}, ${res.public[1]})`;
     document.getElementById('priv-key').innerText = `(${res.private[0]}, ${res.private[1]})`;
 
