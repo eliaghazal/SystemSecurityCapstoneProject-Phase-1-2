@@ -226,16 +226,19 @@ class RSAAttacker:
                         p = i
                         break
         
-        # Strategy 2: Pollard's Rho (Medium keys, e.g. < 64 bits)
+        # Strategy 2: Pollard's Rho (Primary for medium keys)
+        # We can try it for slightly larger keys now that we have Miller-Rabin for checks if needed,
+        # but Python's recursion limit is the bottleneck.
         elif n.bit_length() <= 64:
             print("[RSA Attack] Using Pollard's Rho...")
             try:
+                # Set a timeout/limit logic if needed, but for <64 bits it's usually fast.
                 p = self._pollards_rho(n)
             except RecursionError:
                 print("[RSA Attack] Pollard's Rho failed (recursion depth).")
         
         else:
-            print("[RSA Attack] Key too large to crack in reasonable time (requires General Number Field Sieve).")
+            print("[RSA Attack] Key too strong. (Modulus > 64 bits requires GNFS)")
             return None
 
         if not p:

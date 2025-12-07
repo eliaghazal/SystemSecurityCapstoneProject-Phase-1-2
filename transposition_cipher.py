@@ -101,7 +101,7 @@ class TranspositionAttacker:
     def __init__(self):
         self.cipher = TranspositionCipher()
         self.ai = AIRecommender()
-        self.MAX_KEY_LEN_BRUTE = 9 # 9! = 362,880 checks
+        self.MAX_KEY_LEN_BRUTE = 8 # 8! = 40,320 checks (Fast & Stable)
 
     def attack(self, ciphertext):
         """
@@ -109,12 +109,18 @@ class TranspositionAttacker:
         """
         candidates = []
         print(f"\n[AI] Generating permutations for key lengths 2-{self.MAX_KEY_LEN_BRUTE}...")
+        
+        total_checks = 0
 
         # Iterate through possible key lengths
         for k_len in range(2, self.MAX_KEY_LEN_BRUTE + 1):
             perms = itertools.permutations(range(k_len))
-
+            
             for p in perms:
+                total_checks += 1
+                if total_checks % 5000 == 0:
+                    print(f".", end="", flush=True)
+                
                 try:
                     decrypted_text = self.cipher.decrypt(ciphertext, list(p))
                     analysis = self.ai.analyze(decrypted_text)
@@ -136,8 +142,26 @@ class TranspositionAttacker:
                 except Exception:
                     continue
 
+        print() # Newline after dots
+        
         # Sort desc
         candidates.sort(key=lambda x: x['score'], reverse=True)
-
+        
+        # SMART RANKING
+        if candidates:
+            top = candidates[0]
+            # If top score is high (>0.85) AND significantly better than #2
+            if top['score'] > 0.85:
+                if len(candidates) > 1:
+                    second = candidates[1]
+                    if top['score'] - second['score'] > 0.1:
+                        top['confidence'] = "HIGH (MATCH FOUND)"
+                    else:
+                        top['confidence'] = "MEDIUM"
+                else:
+                    top['confidence'] = "HIGH"
+            else:
+                top['confidence'] = "LOW"
+        
         # Return only top 100 to keep UI clean, but having scanned ALL of them.
         return candidates[:100]

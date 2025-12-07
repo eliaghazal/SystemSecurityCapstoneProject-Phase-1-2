@@ -1,15 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crypto System | Phase 3</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
+    <canvas id="matrix-bg"></canvas>
     <div class="container">
         <header>
             <h1>Crypto<span class="highlight">System</span></h1>
@@ -69,7 +72,7 @@
             <section id="rsa" class="tab-content">
                 <div class="card">
                     <h2>RSA Encryption</h2>
-                    
+
                     <div class="key-management">
                         <button onclick="rsaGenerate()">Generate New Keys</button>
                         <div class="keys-display" id="rsa-keys-display">
@@ -101,4 +104,5 @@
     </div>
     <script src="/static/script.js"></script>
 </body>
+
 </html>

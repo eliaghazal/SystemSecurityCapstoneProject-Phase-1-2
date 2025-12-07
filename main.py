@@ -145,12 +145,19 @@ def main():
                         cipher_ints = list(map(int, cipher_str.strip().split()))
                         
                         # 1. Recover Private Key
-                        recovered_key = rsa_cracker.attack((e, n))
+                        result = rsa_cracker.attack((e, n))
                         
-                        if recovered_key:
+                        if result:
                             # 2. Decrypt
+                            # result is now a dict: {'private_key': (d, n), 'details': ...}
+                            recovered_key = result['private_key']
                             decrypted = rsa.decrypt(cipher_ints, recovered_key)
                             print(f"\n[SUCCESS] Decrypted Message: {decrypted}")
+                            
+                            print("\n[Attack Details]")
+                            details = result['details']
+                            print(f"Factors: p={details['p']}, q={details['q']}")
+                            print(f"Private Exponent: d={details['d']}")
                         else:
                             print("\n[FAILURE] Could not recover private key.")
                             
