@@ -38,11 +38,21 @@ class CaesarAttacker:
         for key in range(26):
             decrypted_text = self.cipher.decrypt(ciphertext, key)
             analysis = self.ai.analyze(decrypted_text)
+            
+            # Auto-correct if score is decent
+            corrections = []
+            if analysis['score'] > 0.6:
+                corrected_text, corrections = self.ai.auto_correct(decrypted_text)
+                if corrections:
+                    decrypted_text = corrected_text
+                    # Re-score? Optional.
+            
             candidates.append({
                 "key": key,
                 "plaintext": decrypted_text,
                 "score": analysis['score'],
-                "details": analysis
+                "details": analysis,
+                "corrections": corrections
             })
         candidates.sort(key=lambda x: x['score'], reverse=True)
         return candidates

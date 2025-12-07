@@ -119,14 +119,19 @@ class TranspositionAttacker:
                     decrypted_text = self.cipher.decrypt(ciphertext, list(p))
                     analysis = self.ai.analyze(decrypted_text)
 
-                    # CHANGED: REMOVED HARD FILTER "if analysis['score'] > 0.3"
-                    # We now save everything and sort later.
+                    # Auto-correct if score is decent
+                    corrections = []
+                    if analysis['score'] > 0.6:
+                        corrected_text, corrections = self.ai.auto_correct(decrypted_text)
+                        if corrections:
+                            decrypted_text = corrected_text
 
                     candidates.append({
                         "key": f"Len {k_len} | {list(p)}",
                         "plaintext": decrypted_text,
                         "score": analysis['score'],
-                        "details": analysis
+                        "details": analysis,
+                        "corrections": corrections
                     })
                 except Exception:
                     continue
