@@ -43,12 +43,12 @@ async function caesarAttack() {
             </div>
             <div class="result-text">${r.plaintext}</div>
             <div class="result-details">
-                <p><strong>Analysis:</strong></p>
-                <ul>
-                    <li>Dictionary Score: ${(r.details.dict_score * 100).toFixed(1)}% (Matched: ${r.details.matched_words.join(', ')})</li>
-                    <li>N-Gram Score: ${(r.details.ngram_score * 100).toFixed(1)}% (Top: ${r.details.top_ngrams.join(', ')})</li>
-                    <li>Segmented: ${r.details.segmented ? 'Yes' : 'No'}</li>
-                </ul>
+                <p><strong>Log-Probability Analysis:</strong></p>
+                <div class="log-details">
+                    ${r.details.details.slice(0, 5).join('<br>')}
+                    ${r.details.details.length > 5 ? '<br>...' : ''}
+                </div>
+                <p><small>Avg Log-Prob: ${r.details.log_prob ? (r.details.log_prob / r.plaintext.split(' ').length).toFixed(2) : 'N/A'}</small></p>
             </div>
         </div>`;
     });
@@ -83,12 +83,12 @@ async function transAttack() {
             </div>
             <div class="result-text">${r.plaintext}</div>
             <div class="result-details">
-                <p><strong>Analysis:</strong></p>
-                <ul>
-                    <li>Dictionary Score: ${(r.details.dict_score * 100).toFixed(1)}% (Matched: ${r.details.matched_words.join(', ')})</li>
-                    <li>N-Gram Score: ${(r.details.ngram_score * 100).toFixed(1)}% (Top: ${r.details.top_ngrams.join(', ')})</li>
-                    <li>Segmented: ${r.details.segmented ? 'Yes' : 'No'}</li>
-                </ul>
+                <p><strong>Log-Probability Analysis:</strong></p>
+                <div class="log-details">
+                    ${r.details.details.slice(0, 5).join('<br>')}
+                    ${r.details.details.length > 5 ? '<br>...' : ''}
+                </div>
+                <p><small>Avg Log-Prob: ${r.details.log_prob ? (r.details.log_prob / r.plaintext.split(' ').length).toFixed(2) : 'N/A'}</small></p>
             </div>
         </div>`;
     });

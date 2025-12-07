@@ -1,153 +1,137 @@
-import string
-from knowledge_base import COMMON_WORDS, COMMON_TRIGRAMS
-
 import math
-import os
+import string
+from knowledge_base import loader
 
 class AIRecommender:
     def __init__(self):
-        self.alpha = 0.6 # Weight for Dictionary
-        self.beta = 0.4  # Weight for N-Grams
-        self.quadgrams = {}
-        self.total_quadgrams = 0
-        self._load_quadgrams()
-
-    def _load_quadgrams(self):
-        filename = 'english_quadgrams.txt'
-        if os.path.exists(filename):
-            with open(filename, 'r') as f:
-                for line in f:
-                    key, count = line.split()
-                    self.quadgrams[key] = int(count)
-            self.total_quadgrams = sum(self.quadgrams.values())
-        else:
-            # Fallback to trigrams if file missing (though we downloaded it)
-            pass
+        pass
 
     def _clean_tokenize(self, text):
         if not text: return []
+        # Keep spaces for now to split, but remove punctuation
         translator = str.maketrans('', '', string.punctuation)
         clean_text = text.translate(translator).lower()
         return clean_text.split()
 
-    def _get_dictionary_score(self, text):
+    def get_log_probability(self, text):
+        """
+        Calculates the log-probability of the text using Unigrams and Bigrams.
+        Returns: (log_prob_score, details)
+        """
         words = self._clean_tokenize(text)
         if not words:
-            return 0.0, []
-        matches = [w for w in words if w in COMMON_WORDS]
-        score = len(matches) / len(words)
-        return score, matches
+            return -float('inf'), {}
 
-    def _get_ngram_score(self, text):
-        if not text: return 0.0, []
-        clean_text = text.upper().replace(" ", "")
-        if len(clean_text) < 4:
-            return 0.0, []
-
-        score = 0
-        top_ngrams = []
+        log_prob = 0.0
+        details = []
         
-        if self.quadgrams:
-            # Log-likelihood scoring
-            for i in range(len(clean_text) - 3):
-                quad = clean_text[i:i+4]
-                if quad in self.quadgrams:
-                    prob = self.quadgrams[quad] / self.total_quadgrams
-                    score += math.log10(prob)
-                    top_ngrams.append(quad)
-                else:
-                    score += math.log10(0.01 / self.total_quadgrams) # Floor
+        # Step 1: First word (Unigram Probability)
+        w1 = words[0]
+        w1_count = loader.unigrams.get(w1, 0)
+        
+        # Smoothing for unigrams: add 1 to count, add vocab size to total
+        # Simple Laplace smoothing for unknown words
+        vocab_size = len(loader.unigrams)
+        p_w1 = (w1_count + 1) / (loader.total_unigrams + vocab_size)
+        log_prob += math.log10(p_w1)
+        details.append(f"P({w1})={p_w1:.2e}")
+
+        # Step 2: Subsequent words (Bigram Probability with Backoff)
+        for i in range(1, len(words)):
+            w_prev = words[i-1]
+            w_curr = words[i]
             
-            # Normalize log score roughly to 0-1 range for hybrid calc
-            # Typical English quadgram log prob is around -4 per char
-            # This is heuristic normalization
-            expected = -4.0 * (len(clean_text) - 3)
-            normalized_score = max(0, 1 - abs((score - expected) / expected))
-            return normalized_score, top_ngrams[:5]
-        else:
-            # Fallback to Trigrams
-            count = 0
-            for i in range(len(clean_text) - 2):
-                trigram = clean_text[i:i+3]
-                if trigram in COMMON_TRIGRAMS:
-                    score += COMMON_TRIGRAMS[trigram]
-                    top_ngrams.append(trigram)
-                count += 1
-            if count == 0: return 0.0, []
-            return min(1.0, score / (count * 0.2)), top_ngrams[:5]
+            # Try Bigram P(curr | prev)
+            bigram_count = 0
+            if w_prev in loader.bigrams and w_curr in loader.bigrams[w_prev]:
+                bigram_count = loader.bigrams[w_prev][w_curr]
+            
+            if bigram_count > 0:
+                # P(curr | prev) = count(prev, curr) / count(prev)
+                prev_count = loader.unigrams.get(w_prev, 0)
+                # Avoid division by zero if prev not in unigrams (shouldn't happen if in bigrams)
+                if prev_count == 0: prev_count = 1 
+                
+                p_bigram = bigram_count / prev_count
+                log_prob += math.log10(p_bigram)
+                details.append(f"P({w_curr}|{w_prev})={p_bigram:.2e}")
+            else:
+                # Backoff to Unigram P(curr)
+                # Apply a penalty for backoff? Or just raw probability?
+                # Usually backoff involves a weight alpha. For simplicity, we just use P(curr)
+                curr_count = loader.unigrams.get(w_curr, 0)
+                p_unigram = (curr_count + 1) / (loader.total_unigrams + vocab_size)
+                log_prob += math.log10(p_unigram)
+                details.append(f"Backoff: P({w_curr})={p_unigram:.2e}")
 
-    def _segment_text(self, text):
-        """
-        Splits a string without spaces into probable words using dynamic programming (Viterbi-like).
-        Returns: (segmented_text, score)
-        """
-        n = len(text)
-        # dp[i] = max score for substring text[0:i]
-        dp = [-1.0] * (n + 1)
-        dp[0] = 0.0
-        # path[i] = index j < i that gave max score, to reconstruct path
-        path = [-1] * (n + 1)
-
-        for i in range(1, n + 1):
-            for j in range(max(0, i - 20), i): # Look back up to 20 chars
-                word = text[j:i]
-                if word in COMMON_WORDS and dp[j] != -1.0:
-                    # Score logic: longer words are better, but we sum them up
-                    # Simple count of words found? Or length squared?
-                    # Let's use length squared to prefer "information" over "in" + "formation"
-                    current_score = dp[j] + (len(word) ** 2)
-                    if current_score > dp[i]:
-                        dp[i] = current_score
-                        path[i] = j
+        # Normalize by length to compare texts of different lengths?
+        # For ranking candidates of same length (Caesar), raw sum is fine.
+        # For Transposition, length is constant.
+        # But to give a 0-1 score for the GUI, we need normalization.
+        # Average Log Prob per word
+        avg_log_prob = log_prob / len(words)
         
-        # Reconstruct
-        if dp[n] == -1.0:
-            return text, 0.0 # Failed to segment
-        
-        segments = []
-        curr = n
-        while curr > 0:
-            prev = path[curr]
-            segments.append(text[prev:curr])
-            curr = prev
-        
-        return ' '.join(reversed(segments)), dp[n]
-
-    def analyze(self, text):
-        # 1. Standard Analysis
-        dict_score, matches = self._get_dictionary_score(text)
-        ngram_score, top_ngrams = self._get_ngram_score(text)
-
-        # 2. No-Spacing Check
-        segmented_text = text
-        was_segmented = False
-        
-        if dict_score < 0.2 and len(text) >= 8:
-            # Try to segment
-            seg_text, seg_score = self._segment_text(text.replace(" ", ""))
-            if seg_score > 0:
-                # Re-evaluate with segmented text
-                seg_dict_score, seg_matches = self._get_dictionary_score(seg_text)
-                if seg_dict_score > dict_score:
-                    dict_score = seg_dict_score
-                    matches = seg_matches
-                    segmented_text = seg_text
-                    was_segmented = True
-
-        # Dynamic Weighting Logic
-        if dict_score == 0.0 and len(text) > 5:
-            final_score = ngram_score 
-        else:
-            final_score = (self.alpha * dict_score) + (self.beta * ngram_score)
-
-        preview_text = segmented_text if segmented_text else "[Empty]"
+        # Map avg log prob to 0-1 scale
+        # Typical English avg log prob (base 10) is around -3 to -4.
+        # Random text is much lower, e.g., -6 or -7.
+        # Let's map [-7, -2] to [0, 1]
+        normalized_score = max(0.0, min(1.0, (avg_log_prob + 7) / 5))
 
         return {
-            "score": final_score,
-            "dict_score": dict_score,
-            "ngram_score": ngram_score,
-            "preview": preview_text[:60] + "..." if len(preview_text) > 60 else preview_text,
-            "segmented": was_segmented,
-            "matched_words": matches[:10], # Top 10 matches
-            "top_ngrams": top_ngrams
+            "score": normalized_score,
+            "log_prob": log_prob,
+            "avg_log_prob": avg_log_prob,
+            "details": details
+        }
+
+    def _get_char_trigram_score(self, text):
+        """Fallback for text without spaces."""
+        if not text: return 0.0
+        clean_text = text.upper().replace(" ", "")
+        if len(clean_text) < 3: return 0.0
+
+        score = 0
+        total_ngrams = loader.total_trigrams
+        
+        for i in range(len(clean_text) - 2):
+            trigram = clean_text[i:i+3]
+            count = loader.trigrams.get(trigram, 0)
+            # Smoothing
+            prob = (count + 1) / (total_ngrams + 26**3)
+            score += math.log10(prob)
+            
+        # Normalize
+        # Average log prob per trigram
+        avg_score = score / (len(clean_text) - 2)
+        print(f"DEBUG: Trigram Score: {score}, Avg: {avg_score}") # DEBUG
+        
+        # Typical English trigram log prob is around -3.5 to -4.5
+        # But with large vocab, it might be lower.
+        # Observed: -12.8
+        # Map [-15, -5] to [0, 1]
+        normalized = max(0.0, min(1.0, (avg_score + 15) / 10))
+        return normalized
+
+    def analyze(self, text):
+        # Step A: Segmentation (Check for spaces)
+        if " " not in text and len(text) > 10:
+            # Step C: Ciphertext Fallback
+            score = self._get_char_trigram_score(text)
+            return {
+                "score": score,
+                "log_prob": 0,
+                "details": ["Fallback to Character Trigrams"],
+                "segmented": False
+            }
+        
+        # Step B: Scoring
+        result = self.get_log_probability(text)
+        
+        return {
+            "score": result['score'],
+            "log_prob": result['log_prob'],
+            "details": result['details'], # List of probability steps
+            "segmented": True,
+            "matched_words": [], # Deprecated or can extract from details
+            "top_ngrams": [] # Deprecated
         }
