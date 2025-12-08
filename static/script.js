@@ -234,3 +234,70 @@ async function rsaAttack() {
         `;
     }
 }
+
+// --- TRIPLE LOCK ---
+async function tripleEncrypt() {
+    const text = document.getElementById('triple-input').value;
+    const shift = document.getElementById('triple-shift').value;
+    const trans_key = document.getElementById('triple-trans-key').value;
+    const e = document.getElementById('triple-e').value;
+    const n = document.getElementById('triple-n').value;
+
+    const res = await postData('/api/triple/encrypt', { text, shift, trans_key, e, n });
+    document.getElementById('triple-output').innerText = res.result;
+}
+
+async function tripleAttack() {
+    const text = document.getElementById('triple-attack-input').value;
+    const e = document.getElementById('triple-attack-e').value;
+    const n = document.getElementById('triple-attack-n').value;
+
+    const output = document.getElementById('triple-attack-output');
+    output.innerHTML = "<span style='color: var(--danger)'>[SYSTEM] INITIATING DOOMSDAY DECRYPTION PROTOCOL...</span><br>";
+
+    // Call API
+    const res = await postData('/api/triple/attack', { text, e, n });
+
+    if (res.error) {
+        output.innerHTML += `<br><span style='color: red'>ERROR: ${res.error}</span>`;
+        return;
+    }
+
+    const r = res.results;
+
+    // Animation Sequence
+    // 0s: RSA
+    setTimeout(() => {
+        output.innerHTML += "<br>[1/3] CRACKING RSA LAYER...<br>";
+        if (r.step1_rsa.startsWith("FAILED")) {
+            output.innerHTML += `<span style='color: red'>${r.step1_rsa}</span>`;
+        } else {
+            output.innerHTML += `<div class='result-text' style='color: #888;'>${r.step1_rsa}</div>`;
+        }
+    }, 100);
+
+    // 2s: Transposition
+    setTimeout(() => {
+        output.innerHTML += "<br>[2/3] SOLVING TRANSPOSITION...<br>";
+        if (r.step2_trans.startsWith("FAILED")) {
+            output.innerHTML += `<span style='color: red'>${r.step2_trans}</span>`;
+        } else {
+            output.innerHTML += `<div class='result-text' style='color: #aaa;'>${r.step2_trans}</div>`;
+        }
+    }, 2000);
+
+    // 4s: Caesar
+    setTimeout(() => {
+        output.innerHTML += "<br>[3/3] BREAKING CAESAR CIPHER...<br>";
+    }, 4000);
+
+    // 4.5s: Success
+    setTimeout(() => {
+        if (r.step3_caesar.startsWith("FAILED")) {
+            output.innerHTML += `<span style='color: red'>${r.step3_caesar}</span>`;
+        } else {
+            output.innerHTML += `<br><span style='color: var(--success); font-size: 1.2rem; font-weight: bold;'>>> DECRYPTION SUCCESSFUL <<</span><br>`;
+            output.innerHTML += `<div class='result-text' style='border: 2px solid var(--success); color: var(--success); font-size: 1.1rem;'>${r.final_plaintext}</div>`;
+        }
+    }, 4500);
+}

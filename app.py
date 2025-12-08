@@ -73,7 +73,6 @@ def trans_attack():
 
 # --- RSA ROUTES ---
 @app.route('/api/rsa/generate', methods=['POST'])
-@app.route('/api/rsa/generate', methods=['POST'])
 def rsa_generate():
     data = request.json
     strength = data.get('strength', 'strong')
