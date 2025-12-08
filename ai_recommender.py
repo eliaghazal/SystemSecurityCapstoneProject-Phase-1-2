@@ -133,9 +133,46 @@ class AIRecommender:
         }
 
     def _get_char_trigram_score(self, text):
+        """Deprecated: Kept for legacy compatibility if quadgrams missing."""
+        if not text: return 0.0
+        return self._get_quadgram_score(text)
+
+    def _get_quadgram_score(self, text):
+        """
+        Method B: N-gram log-likelihood scoring (Quadgrams).
+        Computes the log probability of the text based on English quadgram frequencies.
+        """
+        if not text: return 0.0
+        # Quadgrams in file are typically UPPERCASE.
+        clean_text = text.upper().replace(" ", "")
+        if len(clean_text) < 4: return 0.0
+
+        score = 0
+        total_ngrams = loader.total_quadgrams
+        if total_ngrams == 0: 
+            # Fallback to trigrams if quadgrams not loaded
+            return self._get_char_trigram_score_legacy(text)
+            
+        for i in range(len(clean_text) - 3):
+            quad = clean_text[i:i+4]
+            count = loader.quadgrams.get(quad, 0)
+            # Smoothing (Add-1)
+            prob = (count + 1) / (total_ngrams + 26**4)
+            score += math.log10(prob)
+            
+        # Normalize by length to make it length-invariant
+        avg_score = score / (len(clean_text) - 3)
+        
+        # Map avg log prob to 0-1 scale
+        # English Text: approx -3.5 to -4.5
+        # Random Text: approx -6.0 to -7.0
+        # Range Mapping: [-6.5, -3.5] -> [0.0, 1.0]
+        normalized = max(0.0, min(1.0, (avg_score + 6.5) / 3.0))
+        return normalized
+
+    def _get_char_trigram_score_legacy(self, text):
         """Fallback for text without spaces."""
         if not text: return 0.0
-        # TRIGRAMS are lowercase in knowledge base (count_3l.txt)
         clean_text = text.lower().replace(" ", "")
         if len(clean_text) < 3: return 0.0
 
@@ -145,20 +182,70 @@ class AIRecommender:
         for i in range(len(clean_text) - 2):
             trigram = clean_text[i:i+3]
             count = loader.trigrams.get(trigram, 0)
-            # Smoothing
             prob = (count + 1) / (total_ngrams + 26**3)
             score += math.log10(prob)
             
-        # Normalize
         avg_score = score / (len(clean_text) - 2)
-        
-        # Map avg log prob to 0-1 scale
-        # Correctly cased English trigrams typically measure around -2.0 to -3.0
-        # Random text is usually < -6.0
-        # Previous range [-15, -5] was for when we had case mismatches (smoothing only).
-        # New Stricter Range: [-8.0, -2.5]
         normalized = max(0.0, min(1.0, (avg_score + 8.0) / 5.5))
         return normalized
+
+    def _get_word_match_score(self, text):
+        """
+        Method A: Dictionary / word-match scoring.
+        Score = (# recognized words) / (total words)
+        Uses segmentation to find words first.
+        """
+        # We rely on _segment_text or simple tokenization
+        if " " not in text:
+            # Try segmentation
+            seg, _ = self._segment_text(text)
+            if seg: text = seg
+            else: return 0.0 # Failed to segment
+            
+        words = text.split()
+        if not words: return 0.0
+        
+        # Count recognized words
+        # 1. Standard Dictionary Check
+        # 2. Length check (single letters other than 'a', 'i' are suspicious)
+        recognized = 0
+        total_len = 0
+        
+        safe_short = {'a','i','am','an','as','at','be','by','do','go','he','hi','if','in','is','it','me','my','no','of','oh','ok','on','or','so','to','up','us','we'}
+        
+        for w in words:
+            clean_w = w.strip(string.punctuation).lower()
+            if not clean_w: continue
+            
+            is_valid = False
+            if clean_w in loader.unigrams:
+                if len(clean_w) >= 3 or clean_w in safe_short:
+                    is_valid = True
+            
+            if is_valid:
+                recognized += 1
+                
+        return recognized / len(words)
+
+    def get_hybrid_score(self, text):
+        """
+        Method D: Hybrid heuristic.
+        final_score = α * word_match_score + β * ngram_score
+        """
+        # Component A
+        word_match = self._get_word_match_score(text)
+        
+        # Component B
+        ngram_score = self._get_quadgram_score(text)
+        
+        # Weights (Justification: N-gram is more robust for 'almost correctness', Word Match is precision)
+        # For Transposition, we want robustness.
+        alpha = 0.4
+        beta = 0.6
+        
+        final_score = (alpha * word_match) + (beta * ngram_score)
+        return final_score, {"word_match": word_match, "ngram": ngram_score}
+
 
     def auto_correct(self, text):
         """
@@ -250,36 +337,34 @@ class AIRecommender:
         return ' '.join(reversed(segments)), dp[n]
 
     def analyze(self, text):
-        # Step A: Segmentation (Check for spaces)
+        """
+        Analyzes text using Hybrid Scoring (Method D).
+        """
+        # Step 1: Calculate Hybrid Score (A + B)
+        score, components = self.get_hybrid_score(text)
+        
+        # Step 2: Details
+        details = [
+            f"Hybrid Score: {score:.4f}",
+            f"  - Word Match (A): {components['word_match']:.4f}",
+            f"  - Quadgram (B): {components['ngram']:.4f}"
+        ]
+        
+        # Try to segment for display, but score comes from Hybrid
         segmented_text = text
         was_segmented = False
-        
         if " " not in text:
-            # Try to segment
-            seg, score = self._segment_text(text)
+            seg, _ = self._segment_text(text)
             if seg:
                 segmented_text = seg
                 was_segmented = True
-            else:
-                # Step C: Ciphertext Fallback
-                score = self._get_char_trigram_score(text)
-                return {
-                    "score": score,
-                    "log_prob": 0,
-                    "details": ["Fallback to Character Trigrams"],
-                    "segmented": False,
-                    "auto_correct": []
-                }
-        
-        # Step B: Scoring
-        result = self.get_text_score(segmented_text)
         
         return {
-            "score": result['score'],
-            "log_prob": result['log_prob'],
-            "details": result['details'],
+            "score": score,
+            "log_prob": 0, # Legacy
+            "details": details,
             "segmented": was_segmented,
-            "auto_correct": [] # Will be populated by attacker if needed
+            "auto_correct": []
         }
 
     def analyze_substitution_potential(self, text):
@@ -310,8 +395,8 @@ class AIRecommender:
             # OPTIMIZATION:
             # Full 'analyze()' includes segmentation which is slow (O(N^2)).
             # Doing this for 45,000 permutations causes TIMEOUT.
-            # We use a fast trigram check as a filter first.
-            fast_score = self._get_char_trigram_score(candidate)
+            # We use a fast Quadgram check as a filter first.
+            fast_score = self._get_quadgram_score(candidate)
             
             if fast_score > 0.45:
                 # Only if it looks promising, run the expensive full analysis

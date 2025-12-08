@@ -8,6 +8,8 @@ class FrequencyLoader:
         self.bigrams = {}
         self.trigrams = {} # Char trigrams
         self.total_trigrams = 0
+        self.quadgrams = {} # Char quadgrams
+        self.total_quadgrams = 0
         self.char_bigrams = {} # Char bigrams
         self.total_char_bigrams = 0
         
@@ -86,7 +88,23 @@ class FrequencyLoader:
                         bigram, count = parts
                         count = int(count)
                         self.char_bigrams[bigram] = count
+                        self.char_bigrams[bigram] = count
                         self.total_char_bigrams += count
+
+        # 5. Char Quadgrams (RECOMMENDED FOR TRANSPOSITION)
+        path = os.path.join(self.base_path, "english_quadgrams.txt")
+        if os.path.exists(path):
+            print("Loading Character Quadgrams...")
+            with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                for line in f:
+                    parts = line.strip().split() # Usually split by space
+                    if len(parts) == 2:
+                        quad, count = parts
+                        count = int(count)
+                        self.quadgrams[quad] = count
+                        self.total_quadgrams += count
+        else:
+             print(f"[Warning] Quadgram file not found: {path} (Skipping Classical Scoring)")
 
     def load_spelling_resources(self):
         # 1. Spell Errors
