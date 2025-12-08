@@ -244,22 +244,29 @@ async function tripleAttack() {
     // Step 1: RSA
     out.innerHTML += "<p>[1/3] CRACKING RSA ENCRYPTION LAYER...</p>";
     await new Promise(r => setTimeout(r, 1000));
+
+    const rsaText = r.rsa_decrypted || "Decryption Failed";
     out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; RSA Factors Found. Private Key Recovered.</p>`;
-    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${r.rsa_decrypted.substring(0, 50)}...</div>`;
+    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${rsaText.substring(0, 50)}...</div>`;
 
     // Step 2: Transposition
     await new Promise(r => setTimeout(r, 1500));
     out.innerHTML += "<p>[2/3] SOLVING TRANSPOSITION PERMUTATIONS...</p>";
-    out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; Brute Force Complete. Best Candidate Score: ${r.trans_score.toFixed(2)}</p>`;
-    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${r.trans_decrypted.substring(0, 50)}...</div>`;
+
+    const transScore = r.trans_score !== undefined ? r.trans_score.toFixed(2) : "0.00";
+    const transText = r.trans_decrypted || "Decryption Failed";
+
+    out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; Brute Force Complete. Best Candidate Score: ${transScore}</p>`;
+    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${transText.substring(0, 50)}...</div>`;
 
     // Step 3: Caesar
     await new Promise(r => setTimeout(r, 1500));
     out.innerHTML += "<p>[3/3] BREAKING CAESAR SHIFT...</p>";
     out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; Pattern Matched. Shift Key Found.</p>`;
-    
+
     // Final Result
     await new Promise(r => setTimeout(r, 1000));
+    const finalText = r.final_plaintext || "Decryption Failed";
     out.innerHTML += `<h2 style='color: var(--success); margin-top: 20px;'>>> DECRYPTION SUCCESSFUL <<</h2>`;
-    out.innerHTML += `<div class='output-area' style='background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success); font-size: 1.2rem;'>${r.final_plaintext}</div>`;
+    out.innerHTML += `<div class='output-area' style='background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success); font-size: 1.2rem;'>${finalText}</div>`;
 }

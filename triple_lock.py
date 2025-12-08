@@ -39,10 +39,10 @@ class TripleLock:
         3. Crack Caesar -> Plaintext
         """
         results = {
-            "step1_rsa": None,
-            "step2_trans": None,
-            "step3_caesar": None,
-            "final_plaintext": None,
+            "rsa_decrypted": "Pending...",
+            "trans_decrypted": "Pending...",
+            "trans_score": 0.0,
+            "final_plaintext": "Pending...",
             "success": False
         }
         
@@ -51,13 +51,13 @@ class TripleLock:
         rsa_result = self.rsa_cracker.attack(rsa_pub_key)
         
         if not rsa_result:
-            results["step1_rsa"] = "FAILED: Could not factorize n."
+            results["rsa_decrypted"] = "FAILED: Could not factorize n."
             return results
             
         private_key = rsa_result['private_key']
         # Decrypt RSA layer
         scrambled_text = self.rsa.decrypt(cipher_ints, private_key)
-        results["step1_rsa"] = scrambled_text
+        results["rsa_decrypted"] = scrambled_text
         
         # Step 2: Transposition Attack
         print("[TripleLock] Breaking Layer 2: Transposition...")
@@ -65,27 +65,27 @@ class TripleLock:
         trans_candidates = self.trans_cracker.attack(scrambled_text)
         
         if not trans_candidates:
-            results["step2_trans"] = "FAILED: No transposition candidates found."
+            results["trans_decrypted"] = "FAILED: No transposition candidates found."
             return results
             
         # Take the top candidate
         best_trans = trans_candidates[0]
         shifted_text = best_trans['plaintext']
-        results["step2_trans"] = f"{shifted_text} (Key: {best_trans['key']})"
+        results["trans_decrypted"] = f"{shifted_text} (Key: {best_trans['key']})"
+        results["trans_score"] = best_trans['score']
         
         # Step 3: Caesar Attack
         print("[TripleLock] Breaking Layer 1: Caesar...")
         caesar_candidates = self.caesar_cracker.attack(shifted_text)
         
         if not caesar_candidates:
-            results["step3_caesar"] = "FAILED: No Caesar candidates found."
+            results["final_plaintext"] = "FAILED: No Caesar candidates found."
             return results
             
         best_caesar = caesar_candidates[0]
         final_plaintext = best_caesar['plaintext']
         
-        results["step3_caesar"] = f"{final_plaintext} (Key: {best_caesar['key']})"
-        results["final_plaintext"] = final_plaintext
+        results["final_plaintext"] = f"{final_plaintext} (Key: {best_caesar['key']})"
         results["success"] = True
         
         return results
