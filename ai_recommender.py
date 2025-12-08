@@ -223,28 +223,67 @@ class AIRecommender:
                     is_valid = True
             
             if is_valid:
-                recognized += 1
+                # FREQUENCY WEIGHTING
+                # Penalize rare words (often acronyms or noise in dictionary)
+                # 'the' count ~23B. 'cats' ~15M. 'thec' ~40k.
+                count = loader.unigrams[clean_w]
+                
+                # Thresholds (tuned on English Web Data)
+                # > 5M: Very Common (1.0)
+                # > 100k: Common (0.9)
+                # < 100k: Rare (0.4) - Punish significantly to prevent "word soup"
+                
+                quality = 0.4
+                if count > 5000000:
+                    quality = 1.0
+                elif count > 100000:
+                    quality = 0.9
+                elif clean_w in safe_short:
+                    quality = 1.0 # Short common words are fine
+                
+                recognized += quality
                 
         return recognized / len(words)
 
     def get_hybrid_score(self, text):
         """
         Method D: Hybrid heuristic.
-        final_score = α * word_match_score + β * ngram_score
+        final_score = α * word_match + β * ngram + γ * bigram
         """
-        # Component A
+        # Ensure segmentation for Bigram/Word checks
+        if " " not in text:
+            seg, _ = self._segment_text(text)
+            if seg: text = seg
+            
+        # Component A: Word Match (Validity & Frequency)
+        # Use the already segmented text
         word_match = self._get_word_match_score(text)
         
-        # Component B
-        ngram_score = self._get_quadgram_score(text)
+        # Component B: Quadgrams (Character robustness)
+        # Quadgrams need unspaced text
+        unspaced = text.replace(" ", "")
+        ngram_score = self._get_quadgram_score(unspaced)
         
-        # Weights (Justification: N-gram is more robust for 'almost correctness', Word Match is precision)
-        # For Transposition, we want robustness.
+        # Component C: Bigram Probability (Grammar/Flow)
+        # get_text_score returns a dict with 'score' (normalized log prob)
+        res = self.get_text_score(text)
+        bigram_score = res['score']
+        
+        # Weights
+        # A (Word Match): 0.4 (Enforce Dictionary)
+        # B (Quadgram): 0.3 (Enforce Char Structure)
+        # C (Bigram): 0.3 (Enforce Grammar - "the cat" > "cat he")
         alpha = 0.4
-        beta = 0.6
+        beta = 0.3
+        gamma = 0.3
         
-        final_score = (alpha * word_match) + (beta * ngram_score)
-        return final_score, {"word_match": word_match, "ngram": ngram_score}
+        final_score = (alpha * word_match) + (beta * ngram_score) + (gamma * bigram_score)
+        
+        return final_score, {
+            "word_match": word_match, 
+            "ngram": ngram_score, 
+            "bigram": bigram_score
+        }
 
 
     def auto_correct(self, text):
