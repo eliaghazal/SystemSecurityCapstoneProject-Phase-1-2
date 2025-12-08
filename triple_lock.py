@@ -69,26 +69,53 @@ class TripleLock:
             results["trans_decrypted"] = "FAILED: No transposition candidates found."
             return results
             
-        # Take the top candidate
-        best_trans = trans_candidates[0]
-        shifted_text = best_trans['plaintext']
-        results["trans_decrypted"] = f"{shifted_text} (Key: {best_trans['key']})"
-        results["trans_score"] = best_trans['score']
-        results["trans_details"] = best_trans['details'] # Add full details
+        # NESTED ATTACK STRATEGY:
+        # Instead of trusting the #1 transposition candidate blindly (which might be ranked #2 due to noise),
+        # we take the TOP 5 candidates and try to crack Caesar on ALL of them.
+        # We pick the winner based on the FINAL English score of the plaintext.
         
-        # Step 3: Caesar Attack
-        print("[TripleLock] Breaking Layer 1: Caesar...")
-        caesar_candidates = self.caesar_cracker.attack(shifted_text)
+        best_overall_score = -1.0
+        best_path = None
         
-        if not caesar_candidates:
-            results["final_plaintext"] = "FAILED: No Caesar candidates found."
-            return results
+        # Check Top 5 (or fewer if less candidates)
+        top_n = trans_candidates[:5]
+        print(f"[TripleLock] Analyzing Top {len(top_n)} Transposition Paths...")
+        
+        for i, trans_cand in enumerate(top_n):
+            shifted_text = trans_cand['plaintext']
+            trans_key_disp = trans_cand['key']
+            trans_score = trans_cand['score']
             
-        best_caesar = caesar_candidates[0]
-        final_plaintext = best_caesar['plaintext']
-        
-        results["final_plaintext"] = f"{final_plaintext} (Key: {best_caesar['key']})"
-        results["caesar_details"] = best_caesar['details'] # Add full details
-        results["success"] = True
-        
+            # Run Caesar Attack on this candidate
+            caesar_results = self.caesar_cracker.attack(shifted_text)
+            
+            if caesar_results:
+                best_caesar_for_path = caesar_results[0]
+                final_score = best_caesar_for_path['score']
+                
+                # Check if this path is the new best
+                if final_score > best_overall_score:
+                    best_overall_score = final_score
+                    best_path = {
+                        "trans_cand": trans_cand,
+                        "caesar_cand": best_caesar_for_path
+                    }
+                    
+        # Construct Final Result from Best Path
+        if best_path:
+            winning_trans = best_path['trans_cand']
+            winning_caesar = best_path['caesar_cand']
+            
+            results["trans_decrypted"] = f"{winning_trans['plaintext']} (Key: {winning_trans['key']})"
+            results["trans_score"] = winning_trans['score']
+            results["trans_details"] = winning_trans['details']
+            
+            results["final_plaintext"] = f"{winning_caesar['plaintext']} (Key: {winning_caesar['key']})"
+            results["caesar_details"] = winning_caesar['details']
+            results["success"] = True
+            
+            print(f"[TripleLock] Winner Found! Score: {best_overall_score:.4f}")
+        else:
+            results["final_plaintext"] = "FAILED: No valid Caesar path found."
+            
         return results
