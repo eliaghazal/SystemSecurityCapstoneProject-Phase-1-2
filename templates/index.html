@@ -23,6 +23,7 @@
             <button class="nav-btn active" onclick="showTab('caesar')">Caesar</button>
             <button class="nav-btn" onclick="showTab('transposition')">Transposition</button>
             <button class="nav-btn" onclick="showTab('rsa')">RSA</button>
+            <button class="nav-btn" onclick="showTab('triple')" style="color: var(--danger);">☢️ TRIPLE LOCK</button>
         </nav>
 
         <main>
@@ -103,6 +104,67 @@
                         <button class="danger" onclick="rsaAttack()">Attack (Factorize n)</button>
                     </div>
                     <div class="output-area" id="rsa-output"></div>
+                </div>
+            </section>
+
+            <!-- TRIPLE LOCK SECTION -->
+            <section id="triple" class="tab-content">
+                <div class="card" style="max-width: 1200px;">
+                    <h2 style="color: var(--danger); border-color: var(--danger);">☢️ TRIPLE LOCK (DOOMSDAY MODE)</h2>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- LEFT: THE CREATOR -->
+                        <div class="creator-col">
+                            <h3 style="color: var(--accent); margin-bottom: 1rem;">THE CREATOR</h3>
+                            <div class="input-group">
+                                <label>Message</label>
+                                <textarea id="triple-input" placeholder="Top Secret Message..."></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>1. Caesar Shift</label>
+                                <input type="number" id="triple-shift" value="3">
+                            </div>
+                            <div class="input-group">
+                                <label>2. Transposition Key</label>
+                                <input type="text" id="triple-trans-key" placeholder="e.g. ZEBRA">
+                            </div>
+                            <div class="input-group">
+                                <label>3. RSA Public Key (e, n)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="triple-e" placeholder="e">
+                                    <input type="text" id="triple-n" placeholder="n">
+                                </div>
+                                <small style="color: #666;">(Generate keys in RSA tab first)</small>
+                            </div>
+                            <button onclick="tripleEncrypt()"
+                                style="width: 100%; background: var(--secondary-accent); color: white;">ENCRYPT (LEVEL
+                                3)</button>
+
+                            <div class="output-area" id="triple-output" style="margin-top: 1rem; font-size: 0.8rem;">
+                            </div>
+                        </div>
+
+                        <!-- RIGHT: THE BREAKER -->
+                        <div class="breaker-col">
+                            <h3 style="color: var(--danger); margin-bottom: 1rem;">THE BREAKER</h3>
+                            <div class="input-group">
+                                <label>Ciphertext (Integers)</label>
+                                <textarea id="triple-attack-input" placeholder="Paste ciphertext here..."></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>Target RSA Public Key (e, n)</label>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <input type="text" id="triple-attack-e" placeholder="e">
+                                    <input type="text" id="triple-attack-n" placeholder="n">
+                                </div>
+                            </div>
+                            <button class="danger" onclick="tripleAttack()" style="width: 100%;">INITIATE
+                                DECRYPTION</button>
+
+                            <div class="output-area" id="triple-attack-output"
+                                style="margin-top: 1rem; min-height: 300px;"></div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>
