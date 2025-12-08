@@ -76,7 +76,8 @@ class AIRecommender:
     def _get_char_trigram_score(self, text):
         """Fallback for text without spaces."""
         if not text: return 0.0
-        clean_text = text.upper().replace(" ", "")
+        # TRIGRAMS are lowercase in knowledge base (count_3l.txt)
+        clean_text = text.lower().replace(" ", "")
         if len(clean_text) < 3: return 0.0
 
         score = 0
@@ -91,8 +92,13 @@ class AIRecommender:
             
         # Normalize
         avg_score = score / (len(clean_text) - 2)
-        # Map [-15, -5] to [0, 1]
-        normalized = max(0.0, min(1.0, (avg_score + 15) / 10))
+        
+        # Map avg log prob to 0-1 scale
+        # Correctly cased English trigrams typically measure around -2.0 to -3.0
+        # Random text is usually < -6.0
+        # Previous range [-15, -5] was for when we had case mismatches (smoothing only).
+        # New Stricter Range: [-8.0, -2.5]
+        normalized = max(0.0, min(1.0, (avg_score + 8.0) / 5.5))
         return normalized
 
     def auto_correct(self, text):
