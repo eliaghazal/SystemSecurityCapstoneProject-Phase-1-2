@@ -158,41 +158,6 @@ def rsa_attack():
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
-# --- TRIPLE LOCK ROUTES ---
-from triple_lock import TripleLock
-triple_cipher = TripleLock()
-
-@app.route('/api/triple/encrypt', methods=['POST'])
-def triple_encrypt():
-    data = request.json
-    text = data.get('text')
-    shift = int(data.get('shift'))
-    trans_key = data.get('trans_key')
-    e = int(data.get('e'))
-    n = int(data.get('n'))
-    
-    cipher_ints = triple_cipher.encrypt(text, shift, trans_key, (e, n))
-    return jsonify({'result': ' '.join(map(str, cipher_ints))})
-
-@app.route('/api/triple/attack', methods=['POST'])
-def triple_attack():
-    data = request.json
-    text = data.get('text') # Ciphertext ints
-    e = int(data.get('e'))
-    n = int(data.get('n'))
-    
-    try:
-        # Sanitize input: Filter out any non-digit tokens (like "ENCRYPT", "LEVEL", etc.)
-        tokens = text.strip().split()
-        cipher_ints = [int(t) for t in tokens if t.isdigit()]
-        
-        if not cipher_ints:
-            return jsonify({'error': 'No valid integer ciphertext found.'}), 400
-            
-        results = triple_cipher.attack(cipher_ints, (e, n))
-        return jsonify({'results': results})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
