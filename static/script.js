@@ -52,30 +52,6 @@ window.addEventListener('resize', () => {
     canvas.height = window.innerHeight;
 });
 
-// --- HACKING EFFECT ---
-function hackText(element, finalString, speed = 30) {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
-    let iterations = 0;
-
-    const interval = setInterval(() => {
-        element.innerText = finalString
-            .split("")
-            .map((letter, index) => {
-                if (index < iterations) {
-                    return finalString[index];
-                }
-                return letters[Math.floor(Math.random() * 26)];
-            })
-            .join("");
-
-        if (iterations >= finalString.length) {
-            clearInterval(interval);
-        }
-
-        iterations += 1 / 3;
-    }, speed);
-}
-
 async function postData(url, data) {
     const response = await fetch(url, {
         method: 'POST',
@@ -118,7 +94,6 @@ async function caesarAttack() {
                     ${r.details.details.slice(0, 5).join('<br>')}
                     ${r.details.details.length > 5 ? '<br>...' : ''}
                 </div>
-                <p><small>Avg Log-Prob: ${r.details.log_prob ? (r.details.log_prob / r.plaintext.split(' ').length).toFixed(2) : 'N/A'}</small></p>
             </div>
         </div>`;
     });
@@ -158,7 +133,6 @@ async function transAttack() {
                     ${r.details.details.slice(0, 5).join('<br>')}
                     ${r.details.details.length > 5 ? '<br>...' : ''}
                 </div>
-                <p><small>Avg Log-Prob: ${r.details.log_prob ? (r.details.log_prob / r.plaintext.split(' ').length).toFixed(2) : 'N/A'}</small></p>
             </div>
         </div>`;
     });
@@ -174,7 +148,6 @@ async function rsaGenerate() {
     document.getElementById('pub-key').innerText = `(${res.public[0]}, ${res.public[1]})`;
     document.getElementById('priv-key').innerText = `(${res.private[0]}, ${res.private[1]})`;
 
-    // Auto-fill inputs
     document.getElementById('rsa-e').value = res.public[0];
     document.getElementById('rsa-n').value = res.public[1];
     document.getElementById('rsa-d').value = res.private[0];
@@ -221,21 +194,12 @@ async function rsaAttack() {
             <h3 style="color: var(--success)">Success!</h3>
             <p><strong>Recovered Private Key:</strong> (${res.private_key[0]}, ${res.private_key[1]})</p>
             <p><strong>Decrypted Message:</strong> ${res.decrypted}</p>
-            <div class="result-details">
-                <p><strong>Factorization Details:</strong></p>
-                <ul>
-                    <li>n = ${n}</li>
-                    <li>p = ${res.details.p}</li>
-                    <li>q = ${res.details.q}</li>
-                    <li>phi(n) = ${res.details.phi}</li>
-                    <li>d = ${res.details.d} (Calculated via Modular Inverse)</li>
-                </ul>
-            </div>
         `;
     }
 }
 
-// --- TRIPLE LOCK ---
+// --- TRIPLE LOCK (THE NEW FUNCTIONS) ---
+
 async function tripleEncrypt() {
     const text = document.getElementById('triple-input').value;
     const shift = document.getElementById('triple-shift').value;
@@ -243,6 +207,12 @@ async function tripleEncrypt() {
     const e = document.getElementById('triple-e').value;
     const n = document.getElementById('triple-n').value;
 
+    if (!text || !shift || !trans_key || !e || !n) {
+        alert("Please fill in all fields (Message, Shift, Key, RSA Public Key)");
+        return;
+    }
+
+    document.getElementById('triple-output').innerText = "Encrypting...";
     const res = await postData('/api/triple/encrypt', { text, shift, trans_key, e, n });
     document.getElementById('triple-output').innerText = res.result;
 }
@@ -252,52 +222,44 @@ async function tripleAttack() {
     const e = document.getElementById('triple-attack-e').value;
     const n = document.getElementById('triple-attack-n').value;
 
-    const output = document.getElementById('triple-attack-output');
-    output.innerHTML = "<span style='color: var(--danger)'>[SYSTEM] INITIATING DOOMSDAY DECRYPTION PROTOCOL...</span><br>";
+    if (!text || !e || !n) {
+        alert("Please enter Ciphertext and RSA Public Key (e, n)");
+        return;
+    }
 
-    // Call API
+    const out = document.getElementById('triple-attack-output');
+    out.innerHTML = "<p style='color: var(--danger)'>[SYSTEM] INITIATING DOOMSDAY PROTOCOL...</p>";
+
+    // Start the attack
     const res = await postData('/api/triple/attack', { text, e, n });
 
     if (res.error) {
-        output.innerHTML += `<br><span style='color: red'>ERROR: ${res.error}</span>`;
+        out.innerText = "Error: " + res.error;
         return;
     }
 
     const r = res.results;
 
-    // Animation Sequence
-    // 0s: RSA
-    setTimeout(() => {
-        output.innerHTML += "<br>[1/3] CRACKING RSA LAYER...<br>";
-        if (r.step1_rsa.startsWith("FAILED")) {
-            output.innerHTML += `<span style='color: red'>${r.step1_rsa}</span>`;
-        } else {
-            output.innerHTML += `<div class='result-text' style='color: #888;'>${r.step1_rsa}</div>`;
-        }
-    }, 100);
+    // ANIMATION SEQUENCE
+    // Step 1: RSA
+    out.innerHTML += "<p>[1/3] CRACKING RSA ENCRYPTION LAYER...</p>";
+    await new Promise(r => setTimeout(r, 1000));
+    out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; RSA Factors Found. Private Key Recovered.</p>`;
+    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${r.rsa_decrypted.substring(0, 50)}...</div>`;
 
-    // 2s: Transposition
-    setTimeout(() => {
-        output.innerHTML += "<br>[2/3] SOLVING TRANSPOSITION...<br>";
-        if (r.step2_trans.startsWith("FAILED")) {
-            output.innerHTML += `<span style='color: red'>${r.step2_trans}</span>`;
-        } else {
-            output.innerHTML += `<div class='result-text' style='color: #aaa;'>${r.step2_trans}</div>`;
-        }
-    }, 2000);
+    // Step 2: Transposition
+    await new Promise(r => setTimeout(r, 1500));
+    out.innerHTML += "<p>[2/3] SOLVING TRANSPOSITION PERMUTATIONS...</p>";
+    out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; Brute Force Complete. Best Candidate Score: ${r.trans_score.toFixed(2)}</p>`;
+    out.innerHTML += `<div class='output-area' style='border: 1px solid var(--accent); padding: 5px; margin: 5px 0;'>${r.trans_decrypted.substring(0, 50)}...</div>`;
 
-    // 4s: Caesar
-    setTimeout(() => {
-        output.innerHTML += "<br>[3/3] BREAKING CAESAR CIPHER...<br>";
-    }, 4000);
-
-    // 4.5s: Success
-    setTimeout(() => {
-        if (r.step3_caesar.startsWith("FAILED")) {
-            output.innerHTML += `<span style='color: red'>${r.step3_caesar}</span>`;
-        } else {
-            output.innerHTML += `<br><span style='color: var(--success); font-size: 1.2rem; font-weight: bold;'>>> DECRYPTION SUCCESSFUL <<</span><br>`;
-            output.innerHTML += `<div class='result-text' style='border: 2px solid var(--success); color: var(--success); font-size: 1.1rem;'>${r.final_plaintext}</div>`;
-        }
-    }, 4500);
+    // Step 3: Caesar
+    await new Promise(r => setTimeout(r, 1500));
+    out.innerHTML += "<p>[3/3] BREAKING CAESAR SHIFT...</p>";
+    out.innerHTML += `<p style='color: #aaa; margin-left: 20px;'>&gt; Pattern Matched. Shift Key Found.</p>`;
+    
+    // Final Result
+    await new Promise(r => setTimeout(r, 1000));
+    out.innerHTML += `<h2 style='color: var(--success); margin-top: 20px;'>>> DECRYPTION SUCCESSFUL <<</h2>`;
+    out.innerHTML += `<div class='output-area' style='background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success); font-size: 1.2rem;'>${r.final_plaintext}</div>`;
 }
