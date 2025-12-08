@@ -56,21 +56,80 @@ class AIRecommender:
                 # Backoff to Unigram P(curr)
                 curr_count = loader.unigrams.get(w_curr, 0)
                 p_unigram = (curr_count + 1) / (loader.total_unigrams + vocab_size)
-                log_prob += math.log10(p_unigram)
-                details.append(f"Backoff: P({w_curr})={p_unigram:.2e}")
+                
+                # PENALTY for Backoff:
+                # Random permutations of words ("i ill a to") rely on backoff.
+                # Valid sentences ("hello world") match bigrams.
+                # We punish backoff to favor coherence.
+                backoff_penalty = -1.0 # Divide prob by 10
+                
+                log_prob += math.log10(p_unigram) + backoff_penalty
+                details.append(f"Backoff: P({w_curr})={p_unigram:.2e} (Penalty {backoff_penalty})")
 
-        # Normalize
+        # Normalize Probability Score
         avg_log_prob = log_prob / len(words)
+        prob_score = max(0.0, min(1.0, (avg_log_prob + 7) / 5))
+
+        # 3. Content Density Score (IDF)
+        # Prob score favors "to be or not to be" (common words).
+        # We also want to favor "hello world" (specific content).
+        # IDF = -log10(p). Rare words have high IDF. Unknown words have 0 IDF.
+        total_idf = 0
+        for w in words:
+            if w in loader.unigrams:
+                # Calculate p without smoothing for IDF lookup
+                p = loader.unigrams[w] / loader.total_unigrams
+                idf = -math.log10(p)
+                total_idf += idf
         
-        # Map avg log prob to 0-1 scale
-        # Typical English avg log prob (base 10) is around -3 to -4.
-        normalized_score = max(0.0, min(1.0, (avg_log_prob + 7) / 5))
+        avg_idf = total_idf / len(words)
+        # Normalize IDF: 
+        # "the" ~ 1.0. "hello" ~ 4.5. "security" ~ 5.0. 
+        # Map 0..5 to 0..1.
+        content_score = min(1.0, avg_idf / 5.0)
+
+
+
+        # 4. Dictionary Coverage Bonus
+        # STRICT CHECK: 
+        safe_short = {
+            'a','i',
+            'am','an','as','at','be','by','do','go','he','hi','if','in','is','it',
+            'me','my','no','of','oh','ok','on','or','so','to','up','us','we'
+        }
+        
+        def is_valid_word(w):
+            if w not in loader.unigrams: return False
+            if len(w) < 3 and w not in safe_short: return False
+            return True
+
+        in_dict_count = sum(1 for w in words if is_valid_word(w))
+        coverage = in_dict_count / len(words) if words else 0
+        
+        # Scale bonus by word length
+        avg_len = sum(len(w) for w in words) / len(words) if words else 0
+        bonus_mult = 1.0
+        if avg_len < 3.0: bonus_mult = 0.3
+        
+        coverage_bonus = 0.0
+        if coverage == 1.0:
+            coverage_bonus = 0.15 * bonus_mult
+        elif coverage > 0.8:
+            coverage_bonus = 0.05 * bonus_mult
+
+        # 5. Final Weighted Score
+        # Blend Fluency (Probability) and Content (IDF).
+        # High Fluency + Low Content = "to be to be" (Mediocre)
+        # High Fluency + High Content = "security breach" (Best)
+        base_score = (prob_score * 0.4) + (content_score * 0.6)
+        
+        normalized_score = min(1.0, base_score + coverage_bonus)
 
         return {
             "score": normalized_score,
             "log_prob": log_prob,
             "avg_log_prob": avg_log_prob,
-            "details": details
+            "details": details + [f"IDF Score: {content_score:.2f} (Avg IDF {avg_idf:.1f})"]
         }
 
     def _get_char_trigram_score(self, text):
@@ -131,6 +190,7 @@ class AIRecommender:
         Returns: (segmented_text, score)
         """
         n = len(text)
+        text = text.lower() # Fix case sensitivity for "Ilovesystemsecurity"
         # dp[i] = max log prob of text[0:i]
         dp = [-float('inf')] * (n + 1)
         dp[0] = 0
@@ -144,6 +204,22 @@ class AIRecommender:
                 word = text[j:i]
                 
                 # Check if word exists in unigrams
+                # STRICT SEGMENTATION: 
+                # Only allow verified short words (len < 3) to prevent garbage tiling.
+                # Must match strict list: 'a', 'i', 'is', 'to', etc.
+                is_safe_short = True
+                if len(word) < 3:
+                    safe_set = {
+                        'a','i',
+                        'am','an','as','at','be','by','do','go','he','hi','if','in','is','it',
+                        'me','my','no','of','oh','ok','on','or','so','to','up','us','we'
+                    }
+                    if word not in safe_set:
+                         is_safe_short = False
+                
+                if not is_safe_short:
+                    continue
+                    
                 if word in loader.unigrams:
                     # Calculate score: dp[j] + log(P(word))
                     # We can use unigram probability here.
@@ -178,7 +254,7 @@ class AIRecommender:
         segmented_text = text
         was_segmented = False
         
-        if " " not in text and len(text) > 10:
+        if " " not in text:
             # Try to segment
             seg, score = self._segment_text(text)
             if seg:
