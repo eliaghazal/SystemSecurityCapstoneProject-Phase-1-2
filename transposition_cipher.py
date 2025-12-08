@@ -148,7 +148,8 @@ class TranspositionAttacker:
                         "details": analysis,
                         "corrections": corrections
                     })
-                except Exception:
+                except Exception as e:
+                    print(f"DEBUG ERROR: {e}")
                     continue
 
         print() # Newline after dots

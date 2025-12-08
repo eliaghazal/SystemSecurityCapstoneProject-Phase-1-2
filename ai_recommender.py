@@ -241,7 +241,10 @@ class AIRecommender:
                 # Only if it looks promising, run the expensive full analysis
                 # This catches "mynameisjames" (which has good trigrams too)
                 res = self.analyze(candidate)
-                score = res['score']
+                # Take the BEST of either metric.
+                # If dictionary is missing words (e.g. "meows"), segmentation score drops.
+                # But trigram score remains high (0.8+). We should trust the high signal.
+                score = max(fast_score, res['score'])
             else:
                 score = fast_score
             
