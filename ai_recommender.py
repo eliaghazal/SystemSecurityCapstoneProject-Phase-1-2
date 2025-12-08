@@ -231,9 +231,11 @@ class AIRecommender:
             
             candidate = ''.join(shifted)
             
-            # Use character trigram scoring (robust for no-space text)
-            # instead of word-based scoring which fails on long consolidated strings
-            score = self._get_char_trigram_score(candidate)
+            # Use full analysis (Segmentation -> Words -> Fallback Trigrams)
+            # This is robust for "mynameisjames" (segments to "my name is james")
+            # AND "thecatisrunning..." (segments to "the cat is running...")
+            res = self.analyze(candidate)
+            score = res['score']
             
             if score > best_score:
                 best_score = score
