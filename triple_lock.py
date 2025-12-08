@@ -62,7 +62,8 @@ class TripleLock:
         # Step 2: Transposition Attack
         print("[TripleLock] Breaking Layer 2: Transposition...")
         # The output of RSA is the input to Transposition decryption
-        trans_candidates = self.trans_cracker.attack(scrambled_text)
+        # We must check for Caesar potential because the result is still Caesar encrypted!
+        trans_candidates = self.trans_cracker.attack(scrambled_text, check_caesar=True)
         
         if not trans_candidates:
             results["trans_decrypted"] = "FAILED: No transposition candidates found."

@@ -199,3 +199,34 @@ class AIRecommender:
             "segmented": was_segmented,
             "auto_correct": [] # Will be populated by attacker if needed
         }
+
+    def analyze_substitution_potential(self, text):
+        """
+        Analyzes text to see if it *could* be English if Caesar shifted.
+        Returns the best score found across all 26 shifts.
+        """
+        best_score = 0.0
+        
+        # We need a simple shift function here to avoid circular imports
+        upper = string.ascii_uppercase
+        lower = string.ascii_lowercase
+        
+        for shift in range(26):
+            shifted = []
+            for char in text:
+                if char in upper:
+                    idx = upper.index(char)
+                    shifted.append(upper[(idx - shift) % 26])
+                elif char in lower:
+                    idx = lower.index(char)
+                    shifted.append(lower[(idx - shift) % 26])
+                else:
+                    shifted.append(char)
+            
+            candidate = ''.join(shifted)
+            # Use basic scoring (fast)
+            score = self.get_text_score(candidate)['score']
+            if score > best_score:
+                best_score = score
+                
+        return best_score

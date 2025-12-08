@@ -103,9 +103,11 @@ class TranspositionAttacker:
         self.ai = AIRecommender()
         self.MAX_KEY_LEN_BRUTE = 8 # 8! = 40,320 checks (Fast & Stable)
 
-    def attack(self, ciphertext):
+    def attack(self, ciphertext, check_caesar=False):
         """
         Attempts to brute force column orders for key lengths 2 to MAX.
+        If check_caesar is True, it scores candidates based on their potential
+        to be English after a Caesar shift (for Triple Lock).
         """
         candidates = []
         print(f"\n[AI] Generating permutations for key lengths 2-{self.MAX_KEY_LEN_BRUTE}...")
@@ -123,19 +125,26 @@ class TranspositionAttacker:
                 
                 try:
                     decrypted_text = self.cipher.decrypt(ciphertext, list(p))
-                    analysis = self.ai.analyze(decrypted_text)
-
-                    # Auto-correct if score is decent
-                    corrections = []
-                    if analysis['score'] > 0.6:
-                        corrected_text, corrections = self.ai.auto_correct(decrypted_text)
-                        if corrections:
-                            decrypted_text = corrected_text
+                    
+                    if check_caesar:
+                        # Use the new method to check if it looks like shifted English
+                        score = self.ai.analyze_substitution_potential(decrypted_text)
+                        analysis = {"score": score, "details": ["Caesar Potential Check"]}
+                        corrections = []
+                    else:
+                        analysis = self.ai.analyze(decrypted_text)
+                        score = analysis['score']
+                        # Auto-correct if score is decent
+                        corrections = []
+                        if score > 0.6:
+                            corrected_text, corrections = self.ai.auto_correct(decrypted_text)
+                            if corrections:
+                                decrypted_text = corrected_text
 
                     candidates.append({
                         "key": f"Len {k_len} | {list(p)}",
                         "plaintext": decrypted_text,
-                        "score": analysis['score'],
+                        "score": score,
                         "details": analysis,
                         "corrections": corrections
                     })
