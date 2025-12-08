@@ -74,6 +74,7 @@ class TripleLock:
         shifted_text = best_trans['plaintext']
         results["trans_decrypted"] = f"{shifted_text} (Key: {best_trans['key']})"
         results["trans_score"] = best_trans['score']
+        results["trans_details"] = best_trans['details'] # Add full details
         
         # Step 3: Caesar Attack
         print("[TripleLock] Breaking Layer 1: Caesar...")
@@ -87,6 +88,7 @@ class TripleLock:
         final_plaintext = best_caesar['plaintext']
         
         results["final_plaintext"] = f"{final_plaintext} (Key: {best_caesar['key']})"
+        results["caesar_details"] = best_caesar['details'] # Add full details
         results["success"] = True
         
         return results

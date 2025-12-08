@@ -269,4 +269,15 @@ async function tripleAttack() {
     const finalText = r.final_plaintext || "Decryption Failed";
     out.innerHTML += `<h2 style='color: var(--success); margin-top: 20px;'>>> DECRYPTION SUCCESSFUL <<</h2>`;
     out.innerHTML += `<div class='output-area' style='background: rgba(16, 185, 129, 0.2); border: 1px solid var(--success); font-size: 1.2rem;'>${finalText}</div>`;
+
+    if (r.caesar_details && r.caesar_details.details) {
+        out.innerHTML += `<div class='result-details' style='margin-top: 15px; border-top: 1px solid #333; padding-top: 10px;'>
+            <p><strong>AI Probability Analysis:</strong></p>
+            <div class='log-details'>
+                ${r.caesar_details.details.slice(0, 5).join('<br>')}
+                ${r.caesar_details.details.length > 5 ? '<br>...' : ''}
+            </div>
+            <p><small>Confidence Score: ${(r.caesar_details.score * 100).toFixed(1)}%</small></p>
+        </div>`;
+    }
 }

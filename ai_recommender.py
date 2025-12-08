@@ -224,8 +224,11 @@ class AIRecommender:
                     shifted.append(char)
             
             candidate = ''.join(shifted)
-            # Use basic scoring (fast)
-            score = self.get_text_score(candidate)['score']
+            
+            # Use character trigram scoring (robust for no-space text)
+            # instead of word-based scoring which fails on long consolidated strings
+            score = self._get_char_trigram_score(candidate)
+            
             if score > best_score:
                 best_score = score
                 
