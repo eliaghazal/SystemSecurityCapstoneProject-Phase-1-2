@@ -182,7 +182,13 @@ def triple_attack():
     n = int(data.get('n'))
     
     try:
-        cipher_ints = list(map(int, text.strip().split()))
+        # Sanitize input: Filter out any non-digit tokens (like "ENCRYPT", "LEVEL", etc.)
+        tokens = text.strip().split()
+        cipher_ints = [int(t) for t in tokens if t.isdigit()]
+        
+        if not cipher_ints:
+            return jsonify({'error': 'No valid integer ciphertext found.'}), 400
+            
         results = triple_cipher.attack(cipher_ints, (e, n))
         return jsonify({'results': results})
     except Exception as e:
