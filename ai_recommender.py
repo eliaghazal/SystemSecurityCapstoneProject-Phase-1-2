@@ -231,11 +231,19 @@ class AIRecommender:
             
             candidate = ''.join(shifted)
             
-            # Use full analysis (Segmentation -> Words -> Fallback Trigrams)
-            # This is robust for "mynameisjames" (segments to "my name is james")
-            # AND "thecatisrunning..." (segments to "the cat is running...")
-            res = self.analyze(candidate)
-            score = res['score']
+            # OPTIMIZATION:
+            # Full 'analyze()' includes segmentation which is slow (O(N^2)).
+            # Doing this for 45,000 permutations causes TIMEOUT.
+            # We use a fast trigram check as a filter first.
+            fast_score = self._get_char_trigram_score(candidate)
+            
+            if fast_score > 0.45:
+                # Only if it looks promising, run the expensive full analysis
+                # This catches "mynameisjames" (which has good trigrams too)
+                res = self.analyze(candidate)
+                score = res['score']
+            else:
+                score = fast_score
             
             if score > best_score:
                 best_score = score
